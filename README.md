@@ -1,10 +1,22 @@
-# Data Kalbi <3
+# Ece Data Kalbi Pro v300004 <3
 
-macOS veya Linux Terminal'inde aşağıdaki satırı çalıştır. Python 3.9+ gerekir.
+### macOS ve Linux
+
+Terminal'de çalıştır. Python 3.9+ gerekir.
 
 ```sh
 ( f=$(mktemp) && trap 'rm -f "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/sadamazo/data-kalbi/main/Data-Kalbi.sh -o "$f" && bash "$f" )
 ```
+
+### Windows
+
+64 bit Windows 10/11'de PowerShell'i aç ve aşağıdaki satırı çalıştır. Python 3.9+ yoksa panel WinGet ile Python kurmayı teklif eder. İlk Google bağlantısında gerekirse resmi Google Cloud CLI paketi kullanıcı klasörüne kurulur.
+
+```powershell
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/sadamazo/data-kalbi/main/Data-Kalbi.ps1').Content))
+```
+
+Terminal boyutu ve renk desteği uygunsa açılışta iki ASCII kuş sahnesi oynar. Terminal ekranında renk ve animasyonu kapatmak için `NO_COLOR` ortam değişkenini ayarlayabilirsin.
 
 ## BigQuery pazarlama verisi otomasyonu
 
@@ -72,7 +84,7 @@ Sprinklr, LinkedIn Ads, Meta Ads ve Power BI dashboard geliştirmesi Faz 2 kapsa
 
 ## Data Kalbi terminal paneli
 
-[Data-Kalbi.sh](Data-Kalbi.sh) macOS/Linux için tek dosyalık başlatıcıdır. Dosyayı İndirilenler'e kaydedip Terminal'de açın.
+[Data-Kalbi.sh](Data-Kalbi.sh) macOS/Linux, [Data-Kalbi.ps1](Data-Kalbi.ps1) Windows için tek dosyalık başlatıcıdır. macOS/Linux'ta dosyayı İndirilenler'e kaydedip Terminal'de açın.
 
 ```sh
 bash "$HOME/Downloads/Data-Kalbi.sh"

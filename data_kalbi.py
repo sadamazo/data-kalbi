@@ -14,19 +14,36 @@ import time
 from urllib.parse import urlencode
 import webbrowser
 
+from cloud_cli import cloud_command, install_sdk, sdk_available
 from pipeline import Pipeline, VIEWS, load_config, main as pipeline_cli
 
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "data-kalbi"
-DATA = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "data-kalbi"
+APP_NAME = "Ece Data Kalbi Pro v300004"
 SETTINGS = CONFIG / "config.json"
 EXAMPLE = Path(__file__).resolve().parent / "config.example.json"
-SDK_INSTALLER = "https://sdk.cloud.google.com"
 IAM_ACCOUNT = "search-console-data-export@system.gserviceaccount.com"
 
 COLORS = {
     "rose": "38;5;211", "peach": "38;5;216", "lavender": "38;5;183",
     "mint": "38;5;121", "bold": "1",
 }
+
+
+def configure_console():
+    if sys.platform != "win32" or not sys.stdout.isatty():
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.windll.kernel32
+    kernel.GetStdHandle.argtypes = [wintypes.DWORD]
+    kernel.GetStdHandle.restype = wintypes.HANDLE
+    kernel.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    handle = kernel.GetStdHandle(-11)
+    mode = wintypes.DWORD()
+    if not kernel.GetConsoleMode(handle, ctypes.byref(mode)) or not kernel.SetConsoleMode(handle, mode.value | 4):
+        os.environ.setdefault("NO_COLOR", "1")
 
 
 def terminal_effects():
@@ -39,45 +56,84 @@ def paint(value, color):
     return value
 
 
-def bird_banner(heartbeat=False, wink=False):
-    width = 46
-    heart = ("__  __", r"( \/  )", r"\    /", r" \  /") if heartbeat else (
+def perched_birds(pulse=False, wink=False):
+    heart = ("__  __", r"( \/  )", r"\    /", r" \  /") if pulse else (
         " _  _", r"( \/ )", r" \  /", r"  \/",
     )
-    bird_left = "/   -_6" if wink else "/   6_6"
-    birds = (
+    left_eye = "-_6" if wink else "6_6"
+    return (
         f"               {heart[0]}",
         f"               {heart[1]}",
-        f'        .---.  {heart[2]:7}  .-"-.',
-        f"       {bird_left} {heart[3]:7} / 4 4 \\",
-        r"       \_  (__\       \_ v _/",
-        r"       //   \\        //   \\",
-        r"      ((     ))      ((     ))",
-        'jgs=====""===""========""===""=======',
-        r"         |||            |||",
-        r"          |              |",
+        f'        .---.  {heart[2]:7}    .-"-.',
+        f"       /   {left_eye} {heart[3]:7}   / 4 4 " + chr(92),
+        r"       \_  (__\          \_ v _/",
+        r"       //   \\           //   \\",
+        r"      ((     ))         ((     ))",
+        'jgs=====""===""===========""===""=======',
+        "         |||               |||",
+        "          |                 |",
     )
-    border = paint("    ." + "-" * width + ".", "rose")
-    rows = [border, *(paint(f"    |{line:^{width}}|", "rose") for line in ("", "D A T A   K A L B İ", ""))]
-    art_color = "peach" if heartbeat else "rose"
-    for line in birds:
-        rows.append(paint("    |", "rose") + paint(f"    {line:<{width - 4}}", art_color) + paint("|", "rose"))
+
+
+def swans(pulse=False):
+    central = (r"( \/ )", r"\  /") if pulse else (r"(\/)", r"\/")
+    return (
+        f"         {central[0]}",
+        f"          {central[1]}",
+        r" (\/)   .-.  .-.",
+        "  " + r"\/" + "   ((`-)(-`))",
+        r"        \\    //   (\/)",
+        r"         \\  //     \/",
+        '  .="""=._))((_.="""=.',
+        r" /  .,   .'  '.   ,.  " + chr(92),
+        r"/__(,_,-'      '-,_,)__" + chr(92),
+        r"`    /|            |\    `",
+        "   /_|__          __|_\\",
+        "     | `))      ((` |",
+        "     |              |",
+        'jgs -"==          =="-',
+    )
+
+
+def bird_banner(art, label, pulse=False):
+    width = 46
+    art_width = max(len(line) for line in art)
+    inset = (width - art_width) // 2
+    art_color = "peach" if pulse else "rose"
+    rows = [paint("    ." + "-" * width + ".", "rose")]
+    for line, color in ((APP_NAME, "rose"), (label, "lavender"), ("", "rose")):
+        rows.append(paint(f"    |{line:^{width}}|", color))
+    for line in (*art, *("",) * (14 - len(art))):
+        padded = f"{' ' * inset}{line:<{width - inset}}"
+        rows.append(paint("    |", "rose") + paint(padded, art_color) + paint("|", "rose"))
     rows.append(paint("    '" + "-" * width + "'", "rose"))
     return rows
 
 
 def heading():
-    rows = bird_banner()
-    print("\n" + "\n".join(rows), flush=True)
+    settle = bird_banner(swans(), "Pazarlama veri paneli")
     size = shutil.get_terminal_size()
-    if terminal_effects() and size.columns >= 52 and size.lines >= len(rows) + 1:
-        back = f"\033[{len(rows)}F"
-        try:
-            for delay, frame in ((0.24, bird_banner(heartbeat=True)), (0.20, bird_banner(wink=True)), (0.25, rows)):
-                time.sleep(delay)
-                print(back + "\n".join(frame), flush=True)
-        except KeyboardInterrupt:
-            print(back + "\n".join(rows), flush=True)
+    animate = terminal_effects() and size.columns >= 52 and size.lines >= len(settle) + 1
+    if not animate:
+        print("\n" + "\n".join(settle), flush=True)
+        return
+
+    first = bird_banner(perched_birds(), "Dalda buluşma")
+    print("\n" + "\n".join(first), flush=True)
+    back = f"\033[{len(settle)}F"
+    frames = (
+        (0.28, bird_banner(perched_birds(pulse=True), "Dalda buluşma", pulse=True)),
+        (0.22, bird_banner(perched_birds(wink=True), "Dalda buluşma")),
+        (0.38, settle),
+        (0.24, bird_banner(swans(pulse=True), "Pazarlama veri paneli", pulse=True)),
+        (0.26, settle),
+    )
+    try:
+        for delay, frame in frames:
+            time.sleep(delay)
+            print(back + "\n".join(frame), flush=True)
+    except KeyboardInterrupt:
+        print(back + "\n".join(settle), flush=True)
 
 
 def ask(label, default=""):
@@ -122,48 +178,31 @@ def configure():
     print(paint("  <3  Proje bilgileri kaydedildi.", "mint"))
 
 
-def sdk_path():
-    managed = DATA / "google-cloud-sdk/bin"
-    if (managed / "gcloud").is_file() and (managed / "bq").is_file():
-        entries = os.environ.get("PATH", "").split(os.pathsep)
-        if str(managed) not in entries:
-            os.environ["PATH"] = os.pathsep.join([str(managed), *entries])
-
-
 def require_sdk():
-    sdk_path()
-    if shutil.which("gcloud") and shutil.which("bq"):
+    if sdk_available():
         return
-    if sys.platform not in ("darwin", "linux"):
-        raise ValueError("Google Cloud CLI kurulumunu macOS veya Linux üzerinde aç.")
-    print("  Google Cloud CLI gerekiyor. Google'ın resmi yükleyicisi indirilecek.")
+    if sys.platform not in ("darwin", "linux", "win32"):
+        raise ValueError("Google Cloud CLI kurulumu için macOS, Linux veya Windows kullan.")
+    print("  Google Cloud CLI gerekiyor. Google'ın resmi paketi indirilecek.")
     if not confirm("Google Cloud CLI bu uygulamanın klasörüne kurulsun mu?"):
         raise ValueError("Kuruluma devam etmek için gcloud ve bq gerekiyor.")
-    DATA.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with tempfile.TemporaryDirectory(prefix="data-kalbi-sdk-") as folder:
-        installer = Path(folder) / "install.sh"
-        subprocess.run(
-            ["curl", "--fail", "--silent", "--show-error", "--location", "--proto", "=https",
-             SDK_INSTALLER, "--output", str(installer)],
-            check=True,
-        )
-        subprocess.run(["bash", str(installer), "--disable-prompts", f"--install-dir={DATA}"], check=True)
-    sdk_path()
-    if not (shutil.which("gcloud") and shutil.which("bq")):
+    print("  Google Cloud CLI indiriliyor…", flush=True)
+    install_sdk()
+    if not sdk_available():
         raise ValueError("Google Cloud CLI kurulumu tamamlanamadı. Kurulum çıktısını kontrol et.")
 
 
 def google_login():
     require_sdk()
     print(paint("\n  <3  Google giriş ekranı açılıyor.", "rose"), flush=True)
-    subprocess.run(["gcloud", "auth", "login", "--force"], check=True)
+    subprocess.run([*cloud_command("gcloud"), "auth", "login", "--force"], check=True)
     print(paint("  Google oturumu açıldı.", "mint"))
 
 
 def require_login():
     require_sdk()
     active = subprocess.run(
-        ["gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
+        [*cloud_command("gcloud"), "auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
     if not active:
@@ -208,7 +247,7 @@ def connections():
             require_login()
             pipe.check_location("search")
             subprocess.run(
-                ["gcloud", "projects", "add-iam-policy-binding", pipe.project,
+                [*cloud_command("gcloud"), "projects", "add-iam-policy-binding", pipe.project,
                  f"--member=serviceAccount:{IAM_ACCOUNT}", "--role=roles/bigquery.jobUser",
                  "--condition=None"],
                 check=True,
@@ -313,6 +352,7 @@ def menu():
 def main():
     os.environ["CLOUDSDK_CONFIG"] = str(CONFIG / "gcloud")
     os.environ.setdefault("CLOUDSDK_CORE_DISABLE_USAGE_REPORTING", "true")
+    configure_console()
     heading()
     if SETTINGS.exists():
         try:

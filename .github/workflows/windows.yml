@@ -1,0 +1,37 @@
+name: Windows smoke test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Open the published launcher in Windows PowerShell
+        shell: powershell
+        run: |
+          $env:XDG_CONFIG_HOME = Join-Path $env:RUNNER_TEMP 'kalbi-config'
+          $uri = "https://raw.githubusercontent.com/$env:GITHUB_REPOSITORY/$env:GITHUB_SHA/Data-Kalbi.ps1"
+          $preview = '0' | powershell.exe -NoProfile -NonInteractive -Command "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing '$uri').Content))"
+          if ($LASTEXITCODE -ne 0 -or ($preview -join ' ') -notmatch 'Ece Data Kalbi Pro v300004.*Power BI') {
+              throw "Launcher output: $preview"
+          }
+          $preview
+      - name: Start the Google Cloud SDK entry points on Windows
+        shell: pwsh
+        run: |
+          $env:XDG_DATA_HOME = Join-Path $env:RUNNER_TEMP 'kalbi-data'
+          $source = Join-Path $env:RUNNER_TEMP 'cloud_cli.py'
+          $uri = "https://raw.githubusercontent.com/$env:GITHUB_REPOSITORY/$env:GITHUB_SHA/cloud_cli.py"
+          Invoke-WebRequest -Uri $uri -OutFile $source
+          Push-Location $env:RUNNER_TEMP
+          try {
+              python -c "import cloud_cli, subprocess; cloud_cli.install_sdk(); subprocess.run(cloud_cli.cloud_command('gcloud') + ['--version'], check=True); subprocess.run(cloud_cli.cloud_command('bq') + ['version'], check=True)"
+              if ($LASTEXITCODE -ne 0) { throw 'Google Cloud SDK launch failed' }
+          } finally {
+              Pop-Location
+          }

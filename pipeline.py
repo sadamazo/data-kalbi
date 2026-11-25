@@ -5,10 +5,11 @@ from datetime import date
 import json
 from pathlib import Path
 import re
-import shutil
 from string import Template
 import subprocess
 import sys
+
+from cloud_cli import cloud_command
 
 SQL_DIR = Path(__file__).resolve().parent / "sql"
 VIEWS = {
@@ -67,7 +68,7 @@ class Pipeline:
         )
 
     def bq(self, *args, capture=True):
-        cmd = ["bq", f"--project_id={self.project}", f"--location={self.location}", *args]
+        cmd = [*cloud_command("bq"), f"--project_id={self.project}", f"--location={self.location}", *args]
         result = subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE if capture else None)
         return result.stdout
 
@@ -112,7 +113,7 @@ class Pipeline:
 
     def setup(self):
         subprocess.run(
-            ["gcloud", "services", "enable", "bigquery.googleapis.com", "bigquerydatatransfer.googleapis.com",
+            [*cloud_command("gcloud"), "services", "enable", "bigquery.googleapis.com", "bigquerydatatransfer.googleapis.com",
              f"--project={self.project}", "--quiet"],
             check=True,
         )
@@ -186,8 +187,7 @@ def main(argv=None):
             pipeline.plan()
             return 0
         for executable in ("gcloud", "bq") if args.command == "setup" else ("bq",):
-            if not shutil.which(executable):
-                raise ValueError(f"{executable} bulunamadı. Google Cloud CLI kurulumuna bakın.")
+            cloud_command(executable)
         if args.command == "setup":
             pipeline.setup()
             return 0
