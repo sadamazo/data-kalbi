@@ -16,7 +16,6 @@ import webbrowser
 
 from cloud_cli import cloud_command, install_sdk, sdk_available
 from pipeline import Pipeline, VIEWS, load_config, main as pipeline_cli
-from sticker_edges import with_sticker_edges
 
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "data-kalbi"
 APP_NAME = "Ece Data Kalbi Pro v300004"
@@ -57,43 +56,39 @@ def paint(value, color):
     return value
 
 
-def perched_birds(pulse=False, wink=False):
-    heart = ("__  __", r"( \/  )", r"\    /", r" \  /") if pulse else (
-        " _  _", r"( \/ )", r" \  /", r"  \/",
+def couple_art(pulse=False, blink=False):
+    left = (
+        "        _ .-.-. _",
+        "      .( `     ` ).",
+        "     (   .---.    )",
+        "     /  /     \\   \\",
+        "    |  (o)---(o)   |",
+        "    |    .  >      |",
+        r"     \     \_/  . /",
+        "      '._     _.'",
+        "       __)---(__",
+        r"     /'   '-'   '\ ",
     )
-    left_eye = "-_6" if wink else "6_6"
-    return (
-        f"               {heart[0]}",
-        f"               {heart[1]}",
-        f'        .---.  {heart[2]:7}    .-"-.',
-        f"       /   {left_eye} {heart[3]:7}   / 4 4 " + chr(92),
-        r"       \_  (__\          \_ v _/",
-        r"       //   \\           //   \\",
-        r"      ((     ))         ((     ))",
-        'jgs=====""===""===========""===""=======',
-        "         |||               |||",
-        "          |                 |",
+    right = (
+        "         .-~~~~-.",
+        "       .'  _     `.",
+        "      /  .' `-.    \\",
+        "     /  /      \\    \\",
+        f"    |  |  {'-  -' if blink else 'o  o'}  |    |",
+        "    |  |   <  . | o  |",
+        r"    |   \  \_/ /  O  |",
+        r"     \   '.__.'  /  /",
+        r"      )  /    \ (  (",
+        "     /_.'      '._  \\",
     )
-
-
-def swans(pulse=False):
-    central = (r"( \/ )", r"\  /") if pulse else (r"(\/)", r"\/")
-    return (
-        f"         {central[0]}",
-        f"          {central[1]}",
-        r" (\/)   .-.  .-.",
-        "  " + r"\/" + "   ((`-)(-`))",
-        r"        \\    //   (\/)",
-        r"         \\  //     \/",
-        '  .="""=._))((_.="""=.',
-        r" /  .,   .'  '.   ,.  " + chr(92),
-        r"/__(,_,-'      '-,_,)__" + chr(92),
-        r"`    /|            |\    `",
-        "   /_|__          __|_\\",
-        "     | `))      ((` |",
-        "     |              |",
-        'jgs -"==          =="-',
+    heart = (" _  _", r"( \/ )", r"\    /", r" \  /", r"  \/ ") if pulse else (
+        "       ", "  _ _", r" (\/) ", r"  \/ ", "      ",
     )
+    return [
+        ((f"{a:<22}", "peach"), (f"{heart[index] if index < len(heart) else '':^8}", "rose"),
+         (f"{b:<22}", "lavender"))
+        for index, (a, b) in enumerate(zip(left, right))
+    ]
 
 
 MENU_GROUPS = (
@@ -114,7 +109,7 @@ def project_status():
         return "Proje ayarlarını düzeltmek için 1’i seç."
 
 
-def panel_rows(columns, state, art=(), pulse=False):
+def panel_rows(columns, state, art=()):
     width = max(28, min(58, columns - 7))
     inner = width - 6
     rich = terminal_effects()
@@ -138,9 +133,9 @@ def panel_rows(columns, state, art=(), pulse=False):
     row((state[:inner], "mint"), center=True)
     if art:
         row()
-        art_width = max(len(element) for element in art)
         for element in art:
-            row((f"{element:<{art_width}}", "peach" if pulse else "rose"), center=True)
+            row(*element, center=True)
+        row()
     line(left_join, right_join)
     for label, color, actions in MENU_GROUPS:
         row((label, color))
@@ -170,27 +165,24 @@ def menu(intro=False):
                 print(f"{key}  {caption}")
         return
 
-    full_intro = intro and terminal_effects() and size.columns >= 64 and size.lines >= 31
-    if not full_intro:
-        art = ("  .-.   <3   .-.", " ((`-)     (-`))") if intro else ()
-        print("\n" + "\n".join(panel_rows(size.columns, state, art)), flush=True)
+    base = panel_rows(size.columns, state)
+    art_height = size.lines - len(base) - 4
+    show_couple = intro and size.columns >= 59 and art_height >= 8
+    small_art = (
+        (("  (o)-(o)  ", "peach"), (" <3 ", "rose"), ("  (o  o)  ", "lavender")),
+        (("    \_/    ", "peach"), ("    ", None), ("    \_/   ", "lavender")),
+    )
+    art = couple_art()[:art_height] if show_couple else small_art if intro and art_height >= 2 else ()
+    settle = panel_rows(size.columns, state, art) if art else base
+    print("\n" + "\n".join(settle), flush=True)
+    if not show_couple or not terminal_effects() or size.lines < len(settle) + 2:
         return
 
-    def frame(art, pulse=False):
-        normalized = (*art, *("",) * (14 - len(art)))
-        rows = panel_rows(size.columns, state, normalized, pulse)
-        return with_sticker_edges(rows, size.columns, floating=pulse)
-
-    settle = frame(swans())
-    first = frame(perched_birds())
-    print("\n" + "\n".join(first), flush=True)
     back = f"\033[{len(settle)}F"
     frames = (
-        (0.28, frame(perched_birds(pulse=True), pulse=True)),
-        (0.22, frame(perched_birds(wink=True))),
-        (0.38, settle),
-        (0.24, frame(swans(pulse=True), pulse=True)),
-        (0.26, settle),
+        (0.28, panel_rows(size.columns, state, couple_art(pulse=True)[:art_height])),
+        (0.20, panel_rows(size.columns, state, couple_art(blink=True)[:art_height])),
+        (0.24, settle),
     )
     try:
         for delay, rows in frames:

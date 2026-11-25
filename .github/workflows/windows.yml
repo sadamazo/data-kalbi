@@ -15,9 +15,13 @@ jobs:
         shell: powershell
         run: |
           $env:XDG_CONFIG_HOME = Join-Path $env:RUNNER_TEMP 'kalbi-config'
+          $env:COLUMNS = '80'
+          $env:LINES = '24'
           $uri = "https://raw.githubusercontent.com/$env:GITHUB_REPOSITORY/$env:GITHUB_SHA/Data-Kalbi.ps1"
           $preview = '0' | powershell.exe -NoProfile -NonInteractive -Command "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing '$uri').Content))"
-          if ($LASTEXITCODE -ne 0 -or ($preview -join ' ') -notmatch 'Ece Data Kalbi Pro v300004.*Power BI') {
+          $screen = $preview -join ' '
+          if ($LASTEXITCODE -ne 0 -or $screen -notmatch 'Ece Data Kalbi Pro v300004.*Power BI' -or
+              -not $screen.Contains('(o)---(o)') -or -not $screen.Contains('o  o')) {
               throw "Launcher output: $preview"
           }
           $preview

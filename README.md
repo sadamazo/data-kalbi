@@ -16,7 +16,7 @@ Terminal'de çalıştır. Python 3.9+ gerekir.
 & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/sadamazo/data-kalbi/main/Data-Kalbi.ps1').Content))
 ```
 
-Terminal boyutu ve renk desteği uygunsa açılışta iki ASCII kuş sahnesi oynar. Geniş terminalde çerçevenin iki yanında renkli piksel portreleri görünür. Terminal ekranında renk ve animasyonu kapatmak için `NO_COLOR` ortam değişkenini ayarlayabilirsin.
+Açılışta iki ASCII karakter çerçevenin içinde görünür. Yeterli alan ve renk desteği varsa kalp ve göz kırpma animasyonu oynar. Terminal ekranında renk ve animasyonu kapatmak için `NO_COLOR` ortam değişkenini ayarlayabilirsin.
 
 ## BigQuery pazarlama verisi otomasyonu
 

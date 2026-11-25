@@ -78,7 +78,7 @@ try {
 
 def build():
     files = [ROOT / name for name in (
-        "data_kalbi.py", "pipeline.py", "cloud_cli.py", "config.example.json", "sticker_edges.py", "sticker_pixels.json",
+        "data_kalbi.py", "pipeline.py", "cloud_cli.py", "config.example.json",
     )]
     files.extend(sorted((ROOT / "sql").glob("*.sql")))
     data = io.BytesIO()
