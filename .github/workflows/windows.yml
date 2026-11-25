@@ -25,6 +25,15 @@ jobs:
               throw "Launcher output: $preview"
           }
           $preview
+          $env:COLUMNS = '52'
+          $env:LINES = '25'
+          $compact = '0' | powershell.exe -NoProfile -NonInteractive -Command "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing '$uri').Content))"
+          $screen = $compact -join ' '
+          if ($LASTEXITCODE -ne 0 -or -not $screen.Contains('.ooo.') -or -not $screen.Contains('.~~~~.') -or
+              -not $screen.Contains('Power BI')) {
+              throw "Compact launcher output: $compact"
+          }
+          $compact
       - name: Start the Google Cloud SDK entry points on Windows
         shell: pwsh
         run: |

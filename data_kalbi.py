@@ -109,8 +109,17 @@ def project_status():
         return "Proje ayarlarını düzeltmek için 1’i seç."
 
 
+def panel_width(columns):
+    return max(28, min(58, columns - 7))
+
+
+def panel_indent(columns):
+    unused = columns - panel_width(columns) - 2
+    return min(12, max(0, unused // 2))
+
+
 def panel_rows(columns, state, art=()):
-    width = max(28, min(58, columns - 7))
+    width = panel_width(columns)
     inner = width - 6
     rich = terminal_effects()
     top_left, top_right, bottom_left, bottom_right, left_join, right_join, horiz, vert = (
@@ -151,7 +160,8 @@ def panel_rows(columns, state, art=()):
         if label == "KURULUM":
             row()
     line(bottom_left, bottom_right)
-    return ["    " + entry for entry in rows]
+    margin = " " * panel_indent(columns)
+    return [margin + entry for entry in rows]
 
 
 def menu(intro=False):
@@ -163,20 +173,26 @@ def menu(intro=False):
             print(paint(label, color))
             for key, caption in actions:
                 print(f"{key}  {caption}")
-        return
+        return 0
 
     base = panel_rows(size.columns, state)
     art_height = size.lines - len(base) - 4
     show_couple = intro and size.columns >= 59 and art_height >= 8
-    small_art = (
-        (("  (o)-(o)  ", "peach"), (" <3 ", "rose"), ("  (o  o)  ", "lavender")),
-        (("    \_/    ", "peach"), ("    ", None), ("    \_/   ", "lavender")),
+    compact_faces = (
+        (("   .ooo.    ", "peach"), ("     ", None), ("   .~~~~.    ", "lavender")),
+        (("  (o)-(o)   ", "peach"), (" <3  ", "rose"), ("  / o  o \\   ", "lavender")),
+        ((r"    \_/     ", "peach"), ("     ", None), (r"  \  \_/ O   ", "lavender")),
+        (("   /   \\    ", "peach"), ("     ", None), ("   '~..~'    ", "lavender")),
     )
-    art = couple_art()[:art_height] if show_couple else small_art if intro and art_height >= 2 else ()
+    art = ()
+    if show_couple:
+        art = couple_art()[:art_height]
+    elif intro and art_height >= 2:
+        art = compact_faces if art_height >= 4 else compact_faces[1:3]
     settle = panel_rows(size.columns, state, art) if art else base
     print("\n" + "\n".join(settle), flush=True)
     if not show_couple or not terminal_effects() or size.lines < len(settle) + 2:
-        return
+        return panel_indent(size.columns)
 
     back = f"\033[{len(settle)}F"
     frames = (
@@ -190,11 +206,12 @@ def menu(intro=False):
             print(back + "\n".join(rows), flush=True)
     except KeyboardInterrupt:
         print(back + "\n".join(settle), flush=True)
+    return panel_indent(size.columns)
 
 
-def ask(label, default=""):
+def ask(label, default="", *, indent=2):
     suffix = f" [{default}]" if default else ""
-    return input(paint(f"  {label}{suffix} > ", "lavender")).strip() or default
+    return input(paint(f"{' ' * indent}{label}{suffix} > ", "lavender")).strip() or default
 
 
 def confirm(label):
@@ -407,9 +424,9 @@ def main():
     first_menu = True
     while True:
         try:
-            menu(intro=first_menu)
+            margin = menu(intro=first_menu)
             first_menu = False
-            choice = ask("Seçim", "0")
+            choice = ask("Seçim", "0", indent=margin + 1)
             if choice == "0":
                 break
             if choice in actions:
