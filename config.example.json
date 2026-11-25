@@ -1,0 +1,13 @@
+{
+  "project": "your-gcp-project",
+  "location": "EU",
+  "ads_customer_id": "123-456-7890",
+  "ga4_property_id": "123456789",
+  "datasets": {
+    "ads": "raw_google_ads",
+    "search": "searchconsole",
+    "reporting": "marketing_reporting"
+  },
+  "ga4_key_events": [],
+  "maximum_bytes_billed": 10737418240
+}
