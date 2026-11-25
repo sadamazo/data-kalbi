@@ -49,7 +49,8 @@ def sticker_column(sticker, width, height, float_offset):
 
 def with_sticker_edges(banner, columns, floating=False):
     sizes = pixel_sets()
-    width = max((int(size) for size in sizes if 52 + 2 * int(size) < columns), default=0)
+    center_width = len(banner[0].partition("m")[2].partition(RESET)[0])
+    width = max((int(size) for size in sizes if center_width + 4 + 2 * int(size) < columns), default=0)
     if not width:
         return banner
     stickers = sizes[str(width)]

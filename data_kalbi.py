@@ -26,7 +26,7 @@ IAM_ACCOUNT = "search-console-data-export@system.gserviceaccount.com"
 
 COLORS = {
     "rose": "38;5;211", "peach": "38;5;216", "lavender": "38;5;183",
-    "mint": "38;5;121", "bold": "1",
+    "mint": "38;5;121", "edge": "38;5;103",
 }
 
 
@@ -96,43 +96,100 @@ def swans(pulse=False):
     )
 
 
-def bird_banner(art, label, pulse=False):
-    width = 46
-    art_width = max(len(line) for line in art)
-    inset = (width - art_width) // 2
-    art_color = "peach" if pulse else "rose"
-    rows = [paint("." + "-" * width + ".", "rose")]
-    for line, color in ((APP_NAME, "rose"), (label, "lavender"), ("", "rose")):
-        rows.append(paint(f"|{line:^{width}}|", color))
-    for line in (*art, *("",) * (14 - len(art))):
-        padded = f"{' ' * inset}{line:<{width - inset}}"
-        rows.append(paint("|", "rose") + paint(padded, art_color) + paint("|", "rose"))
-    rows.append(paint("'" + "-" * width + "'", "rose"))
-    return ["    " + row for row in rows]
+MENU_GROUPS = (
+    ("KURULUM", "peach", (("1", "Proje bilgileri"), ("2", "Google hesabına gir"),
+                          ("3", "BigQuery’yi hazırla"), ("4", "Kaynakları bağla"))),
+    ("VERİ VE RAPOR", "lavender", (("5", "Aktarımı denetle"), ("6", "Rapor tablosu oluştur"),
+                                   ("7", "Power BI için CSV al"), ("0", "Çıkış"))),
+)
 
 
-def heading():
+def project_status():
+    if not SETTINGS.exists():
+        return "Proje eklemek için 1’i seç."
+    try:
+        config = get_pipeline()
+        return f"{config.project}  /  {config.location}"
+    except (ValueError, OSError, KeyError, TypeError):
+        return "Proje ayarlarını düzeltmek için 1’i seç."
+
+
+def panel_rows(columns, state, art=(), pulse=False):
+    width = max(28, min(58, columns - 7))
+    inner = width - 6
+    rich = terminal_effects()
+    top_left, top_right, bottom_left, bottom_right, left_join, right_join, horiz, vert = (
+        ("╭", "╮", "╰", "╯", "├", "┤", "─", "│") if rich else ("+", "+", "+", "+", "+", "+", "-", "|")
+    )
+    rows = []
+
+    def line(first, last):
+        rows.append(paint(first + horiz * width + last, "edge"))
+
+    def row(*parts, center=False):
+        length = sum(len(part) for part, _ in parts)
+        start = max(0, (width - length) // 2) if center else 3
+        value = "".join(paint(part, tint) if tint else part for part, tint in parts)
+        rows.append(paint(vert, "edge") + " " * start + value
+                    + " " * (width - start - length) + paint(vert, "edge"))
+
+    line(top_left, top_right)
+    row((APP_NAME, "rose"), center=True)
+    row((state[:inner], "mint"), center=True)
+    if art:
+        row()
+        art_width = max(len(element) for element in art)
+        for element in art:
+            row((f"{element:<{art_width}}", "peach" if pulse else "rose"), center=True)
+    line(left_join, right_join)
+    for label, color, actions in MENU_GROUPS:
+        row((label, color))
+        if width >= 57:
+            for first, second in zip(actions[::2], actions[1::2]):
+                hotkey, caption = first
+                other_key, other_caption = second
+                row((hotkey, color), (f"  {caption:<23}", None),
+                    (other_key, color), (f"  {other_caption}", None))
+        else:
+            for hotkey, caption in actions:
+                row((hotkey, color), ("  " + caption[:inner - 3], None))
+        if label == "KURULUM":
+            row()
+    line(bottom_left, bottom_right)
+    return ["    " + entry for entry in rows]
+
+
+def menu(intro=False):
     size = shutil.get_terminal_size()
-    effects = terminal_effects()
-
-    def frame(art, label, pulse=False):
-        rows = bird_banner(art, label, pulse)
-        return with_sticker_edges(rows, size.columns, floating=pulse) if effects else rows
-
-    settle = frame(swans(), "Pazarlama veri paneli")
-    animate = effects and size.columns >= 52 and size.lines >= len(settle) + 1
-    if not animate:
-        print("\n" + "\n".join(settle), flush=True)
+    state = project_status()
+    if size.columns < 36:
+        print(f"\n{APP_NAME}\n{state}")
+        for label, color, actions in MENU_GROUPS:
+            print(paint(label, color))
+            for key, caption in actions:
+                print(f"{key}  {caption}")
         return
 
-    first = frame(perched_birds(), "Dalda buluşma")
+    full_intro = intro and terminal_effects() and size.columns >= 64 and size.lines >= 31
+    if not full_intro:
+        art = ("  .-.   <3   .-.", " ((`-)     (-`))") if intro else ()
+        print("\n" + "\n".join(panel_rows(size.columns, state, art)), flush=True)
+        return
+
+    def frame(art, pulse=False):
+        normalized = (*art, *("",) * (14 - len(art)))
+        rows = panel_rows(size.columns, state, normalized, pulse)
+        return with_sticker_edges(rows, size.columns, floating=pulse)
+
+    settle = frame(swans())
+    first = frame(perched_birds())
     print("\n" + "\n".join(first), flush=True)
     back = f"\033[{len(settle)}F"
     frames = (
-        (0.28, frame(perched_birds(pulse=True), "Dalda buluşma", pulse=True)),
-        (0.22, frame(perched_birds(wink=True), "Dalda buluşma")),
+        (0.28, frame(perched_birds(pulse=True), pulse=True)),
+        (0.22, frame(perched_birds(wink=True))),
         (0.38, settle),
-        (0.24, frame(swans(pulse=True), "Pazarlama veri paneli", pulse=True)),
+        (0.24, frame(swans(pulse=True), pulse=True)),
         (0.26, settle),
     )
     try:
@@ -347,35 +404,19 @@ def export_csv():
     print(f"  {output.name}")
 
 
-def menu():
-    print(paint("\n  KURULUM", "peach"))
-    print("  [1] Proje bilgileri        [2] Google hesabına gir")
-    print("  [3] BigQuery'yi hazırla    [4] Kaynakları bağla")
-    print(paint("\n  VERİ", "lavender"))
-    print("  [5] Aktarımı denetle       [6] Rapor tablolarını oluştur")
-    print("  [7] Power BI için CSV al   [0] Çıkış")
-
-
 def main():
     os.environ["CLOUDSDK_CONFIG"] = str(CONFIG / "gcloud")
     os.environ.setdefault("CLOUDSDK_CORE_DISABLE_USAGE_REPORTING", "true")
     configure_console()
-    heading()
-    if SETTINGS.exists():
-        try:
-            pipe = get_pipeline()
-            print(f"  Proje {pipe.project} · {pipe.location}")
-        except (ValueError, OSError, KeyError, TypeError):
-            print("  Proje ayarları okunamadı. 1 ile bilgileri yeniden gir.")
-    else:
-        print("  İlk defa mı? Proje bilgilerinle başla. <3")
     actions = {
         "1": configure, "2": google_login, "3": setup_cloud, "4": connections,
         "5": lambda: warehouse_action("audit"), "6": lambda: warehouse_action("publish"), "7": export_csv,
     }
+    first_menu = True
     while True:
         try:
-            menu()
+            menu(intro=first_menu)
+            first_menu = False
             choice = ask("Seçim", "0")
             if choice == "0":
                 break
