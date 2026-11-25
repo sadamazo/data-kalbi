@@ -16,6 +16,7 @@ import webbrowser
 
 from cloud_cli import cloud_command, install_sdk, sdk_available
 from pipeline import Pipeline, VIEWS, load_config, main as pipeline_cli
+from sticker_edges import with_sticker_edges
 
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "data-kalbi"
 APP_NAME = "Ece Data Kalbi Pro v300004"
@@ -100,38 +101,44 @@ def bird_banner(art, label, pulse=False):
     art_width = max(len(line) for line in art)
     inset = (width - art_width) // 2
     art_color = "peach" if pulse else "rose"
-    rows = [paint("    ." + "-" * width + ".", "rose")]
+    rows = [paint("." + "-" * width + ".", "rose")]
     for line, color in ((APP_NAME, "rose"), (label, "lavender"), ("", "rose")):
-        rows.append(paint(f"    |{line:^{width}}|", color))
+        rows.append(paint(f"|{line:^{width}}|", color))
     for line in (*art, *("",) * (14 - len(art))):
         padded = f"{' ' * inset}{line:<{width - inset}}"
-        rows.append(paint("    |", "rose") + paint(padded, art_color) + paint("|", "rose"))
-    rows.append(paint("    '" + "-" * width + "'", "rose"))
-    return rows
+        rows.append(paint("|", "rose") + paint(padded, art_color) + paint("|", "rose"))
+    rows.append(paint("'" + "-" * width + "'", "rose"))
+    return ["    " + row for row in rows]
 
 
 def heading():
-    settle = bird_banner(swans(), "Pazarlama veri paneli")
     size = shutil.get_terminal_size()
-    animate = terminal_effects() and size.columns >= 52 and size.lines >= len(settle) + 1
+    effects = terminal_effects()
+
+    def frame(art, label, pulse=False):
+        rows = bird_banner(art, label, pulse)
+        return with_sticker_edges(rows, size.columns, floating=pulse) if effects else rows
+
+    settle = frame(swans(), "Pazarlama veri paneli")
+    animate = effects and size.columns >= 52 and size.lines >= len(settle) + 1
     if not animate:
         print("\n" + "\n".join(settle), flush=True)
         return
 
-    first = bird_banner(perched_birds(), "Dalda buluşma")
+    first = frame(perched_birds(), "Dalda buluşma")
     print("\n" + "\n".join(first), flush=True)
     back = f"\033[{len(settle)}F"
     frames = (
-        (0.28, bird_banner(perched_birds(pulse=True), "Dalda buluşma", pulse=True)),
-        (0.22, bird_banner(perched_birds(wink=True), "Dalda buluşma")),
+        (0.28, frame(perched_birds(pulse=True), "Dalda buluşma", pulse=True)),
+        (0.22, frame(perched_birds(wink=True), "Dalda buluşma")),
         (0.38, settle),
-        (0.24, bird_banner(swans(pulse=True), "Pazarlama veri paneli", pulse=True)),
+        (0.24, frame(swans(pulse=True), "Pazarlama veri paneli", pulse=True)),
         (0.26, settle),
     )
     try:
-        for delay, frame in frames:
+        for delay, rows in frames:
             time.sleep(delay)
-            print(back + "\n".join(frame), flush=True)
+            print(back + "\n".join(rows), flush=True)
     except KeyboardInterrupt:
         print(back + "\n".join(settle), flush=True)
 

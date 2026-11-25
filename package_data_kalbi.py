@@ -77,7 +77,9 @@ try {
 
 
 def build():
-    files = [ROOT / name for name in ("data_kalbi.py", "pipeline.py", "cloud_cli.py", "config.example.json")]
+    files = [ROOT / name for name in (
+        "data_kalbi.py", "pipeline.py", "cloud_cli.py", "config.example.json", "sticker_edges.py", "sticker_pixels.json",
+    )]
     files.extend(sorted((ROOT / "sql").glob("*.sql")))
     data = io.BytesIO()
     with tarfile.open(fileobj=data, mode="w") as archive:
