@@ -56,7 +56,7 @@ def paint(value, color):
     return value
 
 
-def couple_art(pulse=False, blink=False):
+def couple_art(height=10, *, pulse=False, blink=False):
     left = (
         "        _ .-.-. _",
         "      .( `     ` ).",
@@ -84,10 +84,15 @@ def couple_art(pulse=False, blink=False):
     heart = (" _  _", r"( \/ )", r"\    /", r" \  /", r"  \/ ") if pulse else (
         "       ", "  _ _", r" (\/) ", r"  \/ ", "      ",
     )
+    faces = tuple(zip(left, right))
+    if height == 8:
+        faces = faces[:2] + faces[3:8] + faces[-1:]
+    elif height == 9:
+        faces = faces[:2] + faces[3:]
     return [
         ((f"{a:<22}", "peach"), (f"{heart[index] if index < len(heart) else '':^8}", "rose"),
          (f"{b:<22}", "lavender"))
-        for index, (a, b) in enumerate(zip(left, right))
+        for index, (a, b) in enumerate(faces)
     ]
 
 
@@ -186,7 +191,7 @@ def menu(intro=False):
     )
     art = ()
     if show_couple:
-        art = couple_art()[:art_height]
+        art = couple_art(art_height)
     elif intro and art_height >= 2:
         art = compact_faces if art_height >= 4 else compact_faces[1:3]
     settle = panel_rows(size.columns, state, art) if art else base
@@ -196,8 +201,8 @@ def menu(intro=False):
 
     back = f"\033[{len(settle)}F"
     frames = (
-        (0.28, panel_rows(size.columns, state, couple_art(pulse=True)[:art_height])),
-        (0.20, panel_rows(size.columns, state, couple_art(blink=True)[:art_height])),
+        (0.28, panel_rows(size.columns, state, couple_art(art_height, pulse=True))),
+        (0.20, panel_rows(size.columns, state, couple_art(art_height, blink=True))),
         (0.24, settle),
     )
     try:

@@ -21,7 +21,8 @@ jobs:
           $preview = '0' | powershell.exe -NoProfile -NonInteractive -Command "& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing '$uri').Content))"
           $screen = $preview -join ' '
           if ($LASTEXITCODE -ne 0 -or $screen -notmatch 'Ece Data Kalbi Pro v300004.*Power BI' -or
-              -not $screen.Contains('(o)---(o)') -or -not $screen.Contains('o  o')) {
+              -not $screen.Contains('(o)---(o)') -or -not $screen.Contains('o  o') -or
+              -not $screen.Contains("   '-'   ") -or -not $screen.Contains("/_.'")) {
               throw "Launcher output: $preview"
           }
           $preview
