@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from urllib.parse import urlencode
 import webbrowser
 
@@ -28,21 +29,55 @@ COLORS = {
 }
 
 
+def terminal_effects():
+    return sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb"
+
+
 def paint(value, color):
-    if sys.stdout.isatty() and "NO_COLOR" not in os.environ and os.environ.get("TERM") != "dumb":
+    if terminal_effects():
         return f"\033[{COLORS[color]}m{value}\033[0m"
     return value
 
 
+def bird_banner(heartbeat=False, wink=False):
+    width = 46
+    heart = ("__  __", r"( \/  )", r"\    /", r" \  /") if heartbeat else (
+        " _  _", r"( \/ )", r" \  /", r"  \/",
+    )
+    bird_left = "/   -_6" if wink else "/   6_6"
+    birds = (
+        f"               {heart[0]}",
+        f"               {heart[1]}",
+        f'        .---.  {heart[2]:7}  .-"-.',
+        f"       {bird_left} {heart[3]:7} / 4 4 \\",
+        r"       \_  (__\       \_ v _/",
+        r"       //   \\        //   \\",
+        r"      ((     ))      ((     ))",
+        'jgs=====""===""========""===""=======',
+        r"         |||            |||",
+        r"          |              |",
+    )
+    border = paint("    ." + "-" * width + ".", "rose")
+    rows = [border, *(paint(f"    |{line:^{width}}|", "rose") for line in ("", "D A T A   K A L B İ", ""))]
+    art_color = "peach" if heartbeat else "rose"
+    for line in birds:
+        rows.append(paint("    |", "rose") + paint(f"    {line:<{width - 4}}", art_color) + paint("|", "rose"))
+    rows.append(paint("    '" + "-" * width + "'", "rose"))
+    return rows
+
+
 def heading():
-    width = 44
-    lines = ("", "     **   **", "    **** ****    D A T A   K A L B İ",
-             "    *********", "      *****      Pazarlama veri paneli", "        *", "")
-    print()
-    print(paint("    ." + "-" * width + ".", "rose"))
-    for line in lines:
-        print(paint(f"    |{line:<{width}}|", "rose"))
-    print(paint("    '" + "-" * width + "'", "rose"))
+    rows = bird_banner()
+    print("\n" + "\n".join(rows), flush=True)
+    size = shutil.get_terminal_size()
+    if terminal_effects() and size.columns >= 52 and size.lines >= len(rows) + 1:
+        back = f"\033[{len(rows)}F"
+        try:
+            for delay, frame in ((0.24, bird_banner(heartbeat=True)), (0.20, bird_banner(wink=True)), (0.25, rows)):
+                time.sleep(delay)
+                print(back + "\n".join(frame), flush=True)
+        except KeyboardInterrupt:
+            print(back + "\n".join(rows), flush=True)
 
 
 def ask(label, default=""):
